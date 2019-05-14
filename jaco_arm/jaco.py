@@ -2,6 +2,7 @@ import os
 import mujoco_py
 import numpy as np
 from gym.utils import seeding
+import sys
 
 
 class JacoEnv():
@@ -46,7 +47,7 @@ class JacoEnv():
         self.rewarding_distance = rewarding_distance
 
         # Target position bounds
-        self.target_bounds = np.array(((0.4, 0.6), (0.1, 0.3), (0.2, 0.3)))
+        self.target_bounds = np.array(((0.4, 0.6), (0.1, 0.3), (0., 0.)))
         self.target_reset_distance = 0.2
 
         # Setup discrete action space
@@ -187,3 +188,9 @@ class JacoEnv():
         self.sum_reward += reward
 
         return self.get_obs(), reward, done
+
+    def change_floor_color(self, new_rgba):
+        self.sim.model.geom_rgba[0] = new_rgba
+
+    def change_cube_color(self, new_rgba):
+        self.sim.model.geom_rgba[1] = new_rgba

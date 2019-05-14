@@ -10,11 +10,14 @@ from optim import SharedRMSprop
 from train import train
 from test import test
 from utils import Counter
+import cv2
+import numpy as np
+import sys
 
 
 parser = argparse.ArgumentParser(description='a3c-mujoco')
-parser.add_argument('--width', type=int, default=64, help='RGB width')
-parser.add_argument('--height', type=int, default=64, help='RGB height')
+parser.add_argument('--width', type=int, default=1000, help='RGB width')
+parser.add_argument('--height', type=int, default=1000, help='RGB height')
 parser.add_argument('--random', action='store_true', help='Rendering random agent')
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
 parser.add_argument('--num-processes', type=int, default=6, metavar='N',
@@ -52,9 +55,9 @@ if __name__ == '__main__':
 
     # Setup
     args = parser.parse_args()
-    print(' ' * 26 + 'Options')
-    for k, v in vars(args).items():
-        print(' ' * 26 + k + ': ' + str(v))
+    # print(' ' * 26 + 'Options')
+    # for k, v in vars(args).items():
+        # print(' ' * 26 + k + ': ' + str(v))
     args.env = 'jaco'
     args.non_rgb_state_size = 18  # 9 joints qpos and qvel TODO: don't hardcode!
 
@@ -63,10 +66,10 @@ if __name__ == '__main__':
     T = Counter()  # Global shared counter
 
     # Results dir
-    if not os.path.exists('results'):
-        os.makedirs('results')
-    elif not args.overwrite:
-        raise OSError('results dir exists and overwrite flag not passed')
+    # if not os.path.exists('results'):
+    #     os.makedirs('results')
+    # elif not args.overwrite:
+    #     raise OSError('results dir exists and overwrite flag not passed')
 
     # Create shared network
     env = JacoEnv(args.width,
@@ -76,31 +79,45 @@ if __name__ == '__main__':
                   args.control_magnitude,
                   args.reward_continuous)
 
-    shared_model = ActorCritic(None, args.non_rgb_state_size, None,
-                               args.hidden_size)
-    shared_model.share_memory()
-    if args.model and os.path.isfile(args.model):
-        # Load pretrained weights
-        shared_model.load_state_dict(torch.load(args.model))
-    # Create optimiser for shared network parameters with shared statistics
-    optimiser = SharedRMSprop(
-        shared_model.parameters(), lr=args.lr, alpha=args.rmsprop_decay)
-    optimiser.share_memory()
+    done = False
+    i = 0
+    while True:
+        obs, reward, done = env.step(np.random.randint(0, 4, env.num_actuators))
+        cv2.imwrite("test" + str(i) + ".png", obs[2])
+        env.change_floor_color([1., 1., 1., 1.])
+        env.change_cube_color([0., 0., 0., 1.])
+        print(i)
+        i += 1
+        if i > 1:
+            sys.exit()
+        if done:
+            print("done")
+            env.reset()
+    # shared_model = ActorCritic(None, args.non_rgb_state_size, None,
+    #                            args.hidden_size)
+    # shared_model.share_memory()
+    # if args.model and os.path.isfile(args.model):
+    #     # Load pretrained weights
+    #     shared_model.load_state_dict(torch.load(args.model))
+    # # Create optimiser for shared network parameters with shared statistics
+    # optimiser = SharedRMSprop(
+    #     shared_model.parameters(), lr=args.lr, alpha=args.rmsprop_decay)
+    # optimiser.share_memory()
 
-    # Start validation agent
-    processes = []
-    p = mp.Process(target=test, args=(0, args, T, shared_model))
-    p.start()
-    processes.append(p)
+    # # Start validation agent
+    # processes = []
+    # p = mp.Process(target=test, args=(0, args, T, shared_model))
+    # p.start()
+    # processes.append(p)
 
-    if not args.evaluate:
-        # Start training agents
-        for rank in range(1, args.num_processes + 1):
-            p = mp.Process(
-                target=train, args=(rank, args, T, shared_model, optimiser))
-            p.start()
-            processes.append(p)
+    # if not args.evaluate:
+    #     # Start training agents
+    #     for rank in range(1, args.num_processes + 1):
+    #         p = mp.Process(
+    #             target=train, args=(rank, args, T, shared_model, optimiser))
+    #         p.start()
+    #         processes.append(p)
 
-    # Clean up
-    for p in processes:
-        p.join()
+    # # Clean up
+    # for p in processes:
+    #     p.join()
