@@ -4,6 +4,8 @@ import numpy as np
 from gym.utils import seeding
 import sys
 
+from pprint import pprint
+
 
 class JacoEnv():
     def __init__(self,
@@ -16,6 +18,8 @@ class JacoEnv():
         self.frame_skip = frame_skip
         self.width = width
         self.height = height
+
+        self.step_count = 0
 
         # Instantiate Mujoco model
         model_path = "jaco.xml"
@@ -47,17 +51,35 @@ class JacoEnv():
         self.rewarding_distance = rewarding_distance
 
         # Target position bounds
-        self.target_bounds = np.array(((0.4, 0.6), (0.1, 0.3), (0., 0.)))
+        self.target_bounds = np.array(((0.1, 0.5), (0.1, 0.5), (0.02, 0.02)))
         self.target_reset_distance = 0.2
 
         # Setup discrete action space
         self.control_values = self.actuator_ctrlrange * control_magnitude
 
         self.num_actions = 5
-        self.action_space = [list(range(self.num_actions))
-                             ] * self.num_actuators
-        self.observation_space = ((0, ), (height, width, 3),
-                                  (height, width, 3))
+        self.action_space = np.asarray([list(range(self.num_actions))] * self.num_actuators)
+        self.observation_space = ((0, ), (height, width, 3), (height, width, 3))
+
+        # actions = [np.array([i, ] + [0 for j in range(self.num_actuators - 1)]) for i in range(5)]
+        # for i in range(1, self.num_actuators):
+        #     actions2 = []
+        #     for _ in range(len(actions)):
+        #         x = actions.pop(0)
+        #         for j in range(5):
+        #             cp = x.copy()
+        #             cp[i] = j
+        #             actions2.append(cp)
+        #     actions = actions2
+
+        actions = []
+        for i in range(self.num_actuators):
+            for j in range(self.num_actions):
+                x = np.zeros(self.num_actuators)
+                x[i] = j
+                actions.append(x)
+        self.action_dict = {k: v for k, v in enumerate(actions)}
+        self.real_num_actions = len(self.action_dict)
 
         self.reset()
 
@@ -75,6 +97,7 @@ class JacoEnv():
     def reset(self):
         # Random initial position of Jaco
         # qpos = self.init_qpos + np.random.randn(self.sim.nv)
+        self.step_count = 0
 
         #  Fixed initial position of Jaco
         qpos = self.init_qpos
@@ -86,7 +109,7 @@ class JacoEnv():
         # set initial joint positions and velocities
         self.set_qpos_qvel(qpos, qvel)
 
-        return self.get_obs()
+        return self.get_obs()[2]
 
     def reset_target(self):
         # Randomize goal position within specified bounds
@@ -105,7 +128,7 @@ class JacoEnv():
         geom_positions[1] = self.goal
         self.sim.model.geom_pos[:] = geom_positions
 
-    def render(self, camera_name=None):
+    def render(self, camera_name=None, mode=None):
         rgb = self.sim.render(
             width=self.width, height=self.height, camera_name=camera_name)
         return rgb
@@ -140,10 +163,16 @@ class JacoEnv():
         for _ in range(self.frame_skip):
             self.sim.step()
 
+    def translate_action(self, action_int):
+        return self.action_dict[action_int].copy()
+
     # @profile(immediate=True)
-    def step(self, a):
+    def step(self, action_int):
+        a = self.translate_action(action_int)
         dist = np.zeros(3)
         done = False
+        if self.step_count >= 150:
+            done = True
         new_control = np.copy(self.sim.data.ctrl).flatten()
 
         # Compute reward:
@@ -156,11 +185,11 @@ class JacoEnv():
             self.sim.data.get_body_xpos("jaco_link_finger_3") - self.goal)
 
         # if continuous reward
-        # reward = float((np.mean(dist)**-1)*0.1)
-        reward = 0
+        reward = float(((np.mean(dist)+ 1e-6)**-1))
 
         if any(d < self.rewarding_distance for d in dist):
-            reward = 1
+            # reward = 1
+            done = True
             self.reset_target()
 
         # Transform discrete actions to continuous controls
@@ -187,7 +216,8 @@ class JacoEnv():
         self.do_simulation(new_control)
         self.sum_reward += reward
 
-        return self.get_obs(), reward, done
+        self.step_count += 1
+        return self.get_obs()[2], reward, done, {}
 
     def change_floor_color(self, new_rgba):
         self.sim.model.geom_rgba[0] = new_rgba

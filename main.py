@@ -14,10 +14,12 @@ import cv2
 import numpy as np
 import sys
 
+from tqdm import trange
+
 
 parser = argparse.ArgumentParser(description='a3c-mujoco')
-parser.add_argument('--width', type=int, default=1000, help='RGB width')
-parser.add_argument('--height', type=int, default=1000, help='RGB height')
+parser.add_argument('--width', type=int, default=64, help='RGB width')
+parser.add_argument('--height', type=int, default=64, help='RGB height')
 parser.add_argument('--random', action='store_true', help='Rendering random agent')
 parser.add_argument('--seed', type=int, default=123, help='Random seed')
 parser.add_argument('--num-processes', type=int, default=6, metavar='N',
@@ -55,21 +57,12 @@ if __name__ == '__main__':
 
     # Setup
     args = parser.parse_args()
-    # print(' ' * 26 + 'Options')
-    # for k, v in vars(args).items():
-        # print(' ' * 26 + k + ': ' + str(v))
     args.env = 'jaco'
     args.non_rgb_state_size = 18  # 9 joints qpos and qvel TODO: don't hardcode!
 
     mp.set_start_method('spawn')
     torch.manual_seed(args.seed)
     T = Counter()  # Global shared counter
-
-    # Results dir
-    # if not os.path.exists('results'):
-    #     os.makedirs('results')
-    # elif not args.overwrite:
-    #     raise OSError('results dir exists and overwrite flag not passed')
 
     # Create shared network
     env = JacoEnv(args.width,
@@ -79,45 +72,23 @@ if __name__ == '__main__':
                   args.control_magnitude,
                   args.reward_continuous)
 
+    M = cv2.getRotationMatrix2D((32, 32), 180, 1.)
     done = False
-    i = 0
-    while True:
-        obs, reward, done = env.step(np.random.randint(0, 4, env.num_actuators))
-        cv2.imwrite("test" + str(i) + ".png", obs[2])
-        env.change_floor_color([1., 1., 1., 1.])
-        env.change_cube_color([0., 0., 0., 1.])
-        print(i)
-        i += 1
-        if i > 1:
-            sys.exit()
-        if done:
-            print("done")
-            env.reset()
-    # shared_model = ActorCritic(None, args.non_rgb_state_size, None,
-    #                            args.hidden_size)
-    # shared_model.share_memory()
-    # if args.model and os.path.isfile(args.model):
-    #     # Load pretrained weights
-    #     shared_model.load_state_dict(torch.load(args.model))
-    # # Create optimiser for shared network parameters with shared statistics
-    # optimiser = SharedRMSprop(
-    #     shared_model.parameters(), lr=args.lr, alpha=args.rmsprop_decay)
-    # optimiser.share_memory()
+    for i in trange(1000):
+        done = False
+        j = 0
+        while not done:
+            obs, reward, done = env.step(np.random.randint(0, 4, env.num_actuators))
+            img = cv2.warpAffine(obs[2], M, (64, 64))
+            cv2.imwrite("training_observations/obs" + str(i) + "_" + str(j) + ".png", img)
 
-    # # Start validation agent
-    # processes = []
-    # p = mp.Process(target=test, args=(0, args, T, shared_model))
-    # p.start()
-    # processes.append(p)
-
-    # if not args.evaluate:
-    #     # Start training agents
-    #     for rank in range(1, args.num_processes + 1):
-    #         p = mp.Process(
-    #             target=train, args=(rank, args, T, shared_model, optimiser))
-    #         p.start()
-    #         processes.append(p)
-
-    # # Clean up
-    # for p in processes:
-    #     p.join()
+            new_floor_color = list((0.55 - 0.45) * np.random.random(3) + 0.45) + [1.]
+            new_cube_color = list(np.random.random(3)) + [1.]
+            env.change_floor_color(new_floor_color)
+            env.change_cube_color(new_cube_color)
+            j += 1
+            # print(i, j, done)
+            if done:
+                # print("########")
+                env.reset()
+                env.reset_target()
