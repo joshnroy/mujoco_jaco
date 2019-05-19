@@ -189,6 +189,7 @@ class JacoEnv():
 
         if any(d < self.rewarding_distance for d in dist):
             # reward = 1
+            reward = 1e6
             done = True
             self.reset_target()
 
