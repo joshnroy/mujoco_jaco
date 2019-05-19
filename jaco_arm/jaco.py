@@ -3,6 +3,7 @@ import mujoco_py
 import numpy as np
 from gym.utils import seeding
 import sys
+import cv2
 
 from pprint import pprint
 
@@ -20,6 +21,9 @@ class JacoEnv():
         self.height = height
 
         self.step_count = 0
+        self.i = 0
+
+        self.m = cv2.getRotationMatrix2D((32, 32), 180, 1.)
 
         # Instantiate Mujoco model
         model_path = "jaco.xml"
@@ -131,6 +135,8 @@ class JacoEnv():
     def render(self, camera_name=None, mode=None):
         rgb = self.sim.render(
             width=self.width, height=self.height, camera_name=camera_name)
+        rgb = cv2.warpAffine(rgb, self.m, (64, 64))
+        cv2.imwrite("jaco_imgs/render" + str(self.i) + ".png", rgb)
         return rgb
 
     def _get_obs_joint(self):
@@ -188,7 +194,6 @@ class JacoEnv():
         reward = float(((np.mean(dist)+ 1e-6)**-1))
 
         if any(d < self.rewarding_distance for d in dist):
-            # reward = 1
             reward = 1e6
             done = True
             self.reset_target()
@@ -218,6 +223,7 @@ class JacoEnv():
         self.sum_reward += reward
 
         self.step_count += 1
+        self.i += 1
         return self.get_obs()[2], reward, done, {}
 
     def change_floor_color(self, new_rgba):
