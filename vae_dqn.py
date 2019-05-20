@@ -98,7 +98,6 @@ def run():
     dqn.compile(Adam(lr=.00025), metrics=['mae'])
 
     if True:
-        dqn.load_weights("myvae_dqn_checkpoint")
         checkpoint_callback = ModelCheckpoint("myvae_dqn_checkpoint", monitor='episode_reward', verbose=0, save_best_only=True, save_weights_only=True, mode='max', period = 10)
         history = dqn.fit(env, nb_steps=num_simulated_annealing + 450000, visualize=False, verbose=1, callbacks=[checkpoint_callback])
         dqn.save_weights("myvae_dqn_weights")
