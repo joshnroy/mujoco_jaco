@@ -192,6 +192,7 @@ class JacoEnv():
 
         # if continuous reward
         # reward = float(((np.mean(dist)+ 1e-6)**-1))
+        reward = 0
 
         if any(d < self.rewarding_distance for d in dist):
             reward = 1
