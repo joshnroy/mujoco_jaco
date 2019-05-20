@@ -31,6 +31,7 @@ from keras.layers import Dense, Flatten, Conv2D, BatchNormalization, MaxPooling2
 from keras.optimizers import Adam, RMSprop
 from keras.initializers import RandomUniform
 import keras.backend as K
+from keras.callbacks import ModelCheckpoint
 
 from keras.utils import multi_gpu_model
 
@@ -90,11 +91,29 @@ def run():
     dqn = DQNAgent(model=model, nb_actions=nb_actions, policy=policy, memory=memory, nb_steps_warmup=num_warmup, gamma=.99, target_model_update=10000, train_interval=4, delta_clip=1.)
     dqn.compile(Adam(lr=.00025), metrics=['mae'])
 
-    history = dqn.fit(env, nb_steps=num_simulated_annealing + 450000, visualize=False, verbose=1)
-    dqn.save_weights("stylegan_dqn_weights")
-    np.savez_compressed("stylegan_dqn_history", episode_reward=np.asarray(history.history['episode_reward']))
+    if True:
+        checkpoint_callback = ModelCheckpoint("stylegan_dqn_checkpoint", monitor='episode_reward', verbose=0, save_best_only=True, save_weights_only=True, mode='max', period = 10)
+        history = dqn.fit(env, nb_steps=num_simulated_annealing + 450000, visualize=False, verbose=1, callbacks=[checkpoint_callback])
+        dqn.save_weights("stylegan_dqn_weights")
+        np.savez_compressed("stylegan_dqn_history", episode_reward=np.asarray(history.history['episode_reward']))
+    else:
+        dqn.load_weights("stylegan_dqn_weights")
 
-    dqn.test(env, nb_episodes=10, visualize=True)
+        print("original domain")
+        source_test_losses = dqn.test(env, nb_episodes=100, visualize=True)
+        np.savez_compressed("myvae_dqn_source_test",
+                            episode_reward=np.asarray(source_test_losses.history['episode_reward']),
+                            nb_steps=np.asarray(source_test_losses.history['nb_steps']))
+
+        print("target domain")
+        new_floor_color = [0.4, 0.6, 0.4, 1.]
+        new_cube_color = [1.0, 0.0, 0.0, 1.]
+        env.change_floor_color(new_floor_color)
+        env.change_cube_color(new_cube_color)
+        target_test_losses = dqn.test(env, nb_episodes=100, visualize=True)
+        np.savez_compressed("myvae_dqn_target_test",
+                            episode_reward=np.asarray(target_test_losses.history['episode_reward']),
+                            nb_steps=np.asarray(target_test_losses.history['nb_steps']))
 
 if __name__ == '__main__':
     run()
