@@ -191,12 +191,12 @@ class JacoEnv():
             self.sim.data.get_body_xpos("jaco_link_finger_3") - self.goal)
 
         # if continuous reward
-        reward = float(((np.mean(dist)+ 1e-6)**-1))
+        # reward = float(((np.mean(dist)+ 1e-6)**-1))
 
         if any(d < self.rewarding_distance for d in dist):
-            reward = 1e6
-            done = True
-            self.reset_target()
+            reward = 1
+            # done = True
+            # self.reset_target()
 
         # Transform discrete actions to continuous controls
         for i in range(self.num_actuators):
