@@ -139,8 +139,10 @@ class Brain:
                                                                          a_t:
                                                                          a,
                                                                          r_t:
-                                                                         r}) 
+                                                                         r})
                 self.frame_count += len(s)
+                if self.frame_count % (len(s) * 3) == 0:
+                    self.model.save_weights("myvae_a3c.h5", overwrite=True)
                 print("policy:", policy_loss, "value:", value_loss)
 
         def train_push(self, s, a, r, s_):
