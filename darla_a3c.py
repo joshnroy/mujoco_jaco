@@ -67,7 +67,7 @@ class Brain:
 
                 self.csvfile = open("darla_a3c_history.csv", 'w')
                 self.csvwriter = csv.writer(self.csvfile, delimiter=',', quotechar='"')
-                self.csvwriter.writerow(['Policy Loss', 'Value Loss', 'Reward'])
+                self.csvwriter.writerow(['Policy Loss', 'Value Loss', 'Reward', 'Frame Count'])
 
         def _build_model(self):
 
@@ -150,7 +150,7 @@ class Brain:
                 self.frame_count += len(s)
                 if self.frame_count % (len(s) * 3) == 0:
                     self.model.save_weights("darla_a3c.h5", overwrite=True)
-                    self.csvwriter.writerow([policy_loss, value_loss, rewards])
+                    self.csvwriter.writerow([policy_loss, value_loss, rewards, self.frame_count])
                     self.csvfile.flush()
 
         def train_push(self, s, a, r, s_):
