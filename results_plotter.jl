@@ -19,24 +19,24 @@ function stretch_to_500k(input_data)
 end
 
 println("Loading Data")
-visualDeepmindLab = npzread("dqn_visual_history.npz")["episode_reward"]
-RMSVisualDeepmindLab = npzread("dqn_RMSprop_visual_history.npz")["episode_reward"]
+darlaDqn = npzread("darla_dqn_history.npz")["episode_reward"]
+myVaeDqn = npzread("myvae_dqn_history.npz")["episode_reward"]
 #= stylegan = npzread("stylegan_dqn_training_history_500k_again.npz")["episode_reward"] =#
 #= temporalVae = npzread("vae_dqn_training_history_500k_modified.npz")["episode_reward"] =#
 
-smoothedVisualDeepmindLab = float(copy(visualDeepmindLab))
-smoothedRMSVisualDeepmindLab = float(copy(RMSVisualDeepmindLab))
+smoothedDarlaDqn = float(copy(darlaDqn))
+smoothedmyVaeDqn = float(copy(myVaeDqn))
 #= smoothedstylegan = float(copy(stylegan)) =#
 #= smoothedtemporalVae = float(copy(temporalVae)) =#
 
 #= Smooth the array =#
 println("Smoothing Data")
 alpha = 0.01
-for i in 2:length(smoothedVisualDeepmindLab)
-    smoothedVisualDeepmindLab[i] = alpha * visualDeepmindLab[i] + (1. - alpha) * smoothedVisualDeepmindLab[i-1]
+for i in 2:length(smoothedDarlaDqn)
+    smoothedDarlaDqn[i] = alpha * darlaDqn[i] + (1. - alpha) * smoothedDarlaDqn[i-1]
 end
-for i in 2:length(smoothedRMSVisualDeepmindLab)
-    smoothedVisualDeepmindLab[i] = alpha * visualDeepmindLab[i] + (1. - alpha) * smoothedVisualDeepmindLab[i-1]
+for i in 2:length(smoothedmyVaeDqn)
+    smoothedDarlaDqn[i] = alpha * darlaDqn[i] + (1. - alpha) * smoothedDarlaDqn[i-1]
 end
 #= for i in 2:length(smoothedstylegan) =#
 #=     smoothedstylegan[i] = alpha * stylegan[i] + (1. - alpha) * smoothedstylegan[i-1] =#
@@ -46,23 +46,23 @@ end
 #= end =#
 
 println("Stretching Data")
-visualDeepmindLab = stretch_to_500k(visualDeepmindLab)
-smoothedVisualDeepmindLab = stretch_to_500k(smoothedVisualDeepmindLab)
+darlaDqn = stretch_to_500k(darlaDqn)
+smoothedDarlaDqn = stretch_to_500k(smoothedDarlaDqn)
 #= smoothedstylegan = stretch_to_500k(smoothedstylegan) =#
 #= smoothedtemporalVae = stretch_to_500k(smoothedtemporalVae) =#
 
-#= minLength = minimum([length(smoothedvanillaDeepmindLab) length(smoothedVisualDeepmindLab) length(smoothedstylegan) length(smoothedtemporalVae)]) =#
-minLength = minimum([length(visualDeepmindLab) length(smoothedVisualDeepmindLab)])
+#= minLength = minimum([length(smoothedvanillaJaco) length(smoothedDarlaDqn) length(smoothedstylegan) length(smoothedtemporalVae)]) =#
+minLength = minimum([length(darlaDqn) length(smoothedDarlaDqn)])
 println("minLength is ", minLength)
 
-visualDeepmindLab = visualDeepmindLab[1:minLength]
-smoothedVisualDeepmindLab = smoothedVisualDeepmindLab[1:minLength]
+darlaDqn = darlaDqn[1:minLength]
+smoothedDarlaDqn = smoothedDarlaDqn[1:minLength]
 #= smoothedstylegan = smoothedstylegan[1:minLength] =#
 #= smoothedtemporalVae = smoothedtemporalVae[1:minLength] =#
 
 println("Plotting Data")
 x_data = range(1, stop=minLength)
-#= plot(x_data, [smoothedvanillaDeepmindLab smoothedVisualDeepmindLab smoothedstylegan smoothedtemporalVae], label=["Smoothed Vanilla DeepmindLab" "Smoothed Visual DeepmindLab" "Smoothed Stylegan" "Smoothed Temporal VAE"], xlabel="Number of Timesteps", ylabel="Reward", title="Reward vs Training Timestep", legend=:bottomright) =#
-plot(x_data, [visualDeepmindLab smoothedVisualDeepmindLab], label=["Visual DeepmindLab" "Smoothed Visual DeepmindLab"], linealpha=[0.5 1], xlabel="Number of Timesteps", ylabel="Reward", title="Reward vs Training Timestep", legend=:bottomright)
+#= plot(x_data, [smoothedvanillaJaco smoothedDarlaDqn smoothedstylegan smoothedtemporalVae], label=["Smoothed Vanilla Jaco" "Smoothed Visual Jaco" "Smoothed Stylegan" "Smoothed Temporal VAE"], xlabel="Number of Timesteps", ylabel="Reward", title="Reward vs Training Timestep", legend=:bottomright) =#
+plot(x_data, [darlaDqn smoothedDarlaDqn], label=["Visual Jaco" "Smoothed Visual Jaco"], linealpha=[0.5 1], xlabel="Number of Timesteps", ylabel="Reward", title="Reward vs Training Timestep", legend=:bottomright)
 
 savefig("losses.png")

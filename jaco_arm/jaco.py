@@ -225,7 +225,7 @@ class JacoEnv():
 
         self.step_count += 1
         self.i += 1
-        return self.get_obs()[2], reward, done, {}
+        return self.get_obs()[2], reward, done, {'step': self.step_count}
 
     def change_floor_color(self, new_rgba):
         self.sim.model.geom_rgba[0] = new_rgba
