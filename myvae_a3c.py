@@ -325,9 +325,9 @@ for o in opts:
 for e in envs:
         e.start()
 
-for i in trange(int(RUN_TIME / 10)):
-    # print(i * 10, "seconds out of", RUN_TIME)
-    time.sleep(10)
+while brain.frame_count < 9e6:
+    sys.stderr.write(str(brain.frame_count) + "\n")
+    time.sleep(60)
 
 for e in envs:
         e.stop()
