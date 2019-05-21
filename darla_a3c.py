@@ -10,6 +10,7 @@ from keras import backend as K
 
 from variational_autoencoder_deconv import vae
 from tqdm import trange
+import csv
 
 
 #-- constants
@@ -64,6 +65,10 @@ class Brain:
 
                 self.frame_count = 0
 
+                self.csvfile = open("darla_a3c_history.csv", 'w')
+                self.csvwriter = csv.writer(self.csvfile, delimiter=',', quotechar='"')
+                self.csvwriter.writerow(['Policy Loss', 'Value Loss', 'Reward'])
+
         def _build_model(self):
 
                 l_input = Input( batch_shape=(None, 64, 64, 3) )
@@ -83,6 +88,8 @@ class Brain:
                 s_t = tf.placeholder(tf.float32, shape=(None, 64, 64, 3))
                 a_t = tf.placeholder(tf.float32, shape=(None, NUM_ACTIONS))
                 r_t = tf.placeholder(tf.float32, shape=(None, 1)) # not immediate, but discounted n step reward
+
+                self.rewards_mean = tf.reduce_mean(r_t)
 
                 p, v = model(s_t)
 
@@ -131,9 +138,9 @@ class Brain:
                 r = r + GAMMA_N * v * s_mask    # set v to 0 where s_ is terminal state
 
                 s_t, a_t, r_t, minimize = self.graph
-                _, policy_loss, value_loss = self.session.run([minimize,
+                _, policy_loss, value_loss, rewards = self.session.run([minimize,
                                                                self.loss_policy,
-                                                               self.loss_value],
+                                                               self.loss_value, self.rewards_mean],
                                                               feed_dict={s_t:
                                                                          s,
                                                                          a_t:
@@ -142,8 +149,9 @@ class Brain:
                                                                          r})
                 self.frame_count += len(s)
                 if self.frame_count % (len(s) * 3) == 0:
-                    self.model.save_weights("myvae_a3c.h5", overwrite=True)
-                print("policy:", policy_loss, "value:", value_loss)
+                    self.model.save_weights("darla_a3c.h5", overwrite=True)
+                    self.csvwriter.writerow([policy_loss, value_loss, rewards])
+                    self.csvfile.flush()
 
         def train_push(self, s, a, r, s_):
                 with self.lock_queue:
@@ -316,8 +324,8 @@ for o in opts:
 for e in envs:
         e.start()
 
-for i in range(int(RUN_TIME / 10)):
-    print(i * 10, "seconds out of", RUN_TIME)
+for i in trange(int(RUN_TIME / 10)):
+    # print(i * 10, "seconds out of", RUN_TIME)
     time.sleep(10)
 
 for e in envs:
