@@ -100,11 +100,11 @@ class JacoEnv():
 
     def reset(self):
         # Random initial position of Jaco
-        # qpos = self.init_qpos + np.random.randn(self.sim.nv)
+        qpos = self.init_qpos + np.random.randn(9)
         self.step_count = 0
 
         #  Fixed initial position of Jaco
-        qpos = self.init_qpos
+        # qpos = self.init_qpos
         qvel = self.init_qvel
 
         # random object position start of episode
@@ -183,21 +183,38 @@ class JacoEnv():
 
         # Compute reward:
         # If any finger is close enough to target => +1
-        dist[0] = np.linalg.norm(
-            self.sim.data.get_body_xpos("jaco_link_finger_1") - self.goal)
-        dist[1] = np.linalg.norm(
-            self.sim.data.get_body_xpos("jaco_link_finger_2") - self.goal)
-        dist[2] = np.linalg.norm(
-            self.sim.data.get_body_xpos("jaco_link_finger_3") - self.goal)
+        MAX_DIST = 2.
+        finger_1_dist = self.sim.data.get_body_xpos("jaco_link_finger_1") - self.goal
+        finger_1_dist[0] *= 2
+        finger_1_dist[1] *= 2
+        finger_1_dist_num = np.sqrt(finger_1_dist[0]**2 + finger_1_dist[1]**2 + finger_1_dist[2]**2) / MAX_DIST
+        finger_2_dist = self.sim.data.get_body_xpos("jaco_link_finger_2") - self.goal
+        finger_2_dist[0] *= 2
+        finger_2_dist[1] *= 2
+        finger_2_dist_num = np.sqrt(finger_2_dist[0]**2 + finger_2_dist[1]**2 + finger_2_dist[2]**2) / MAX_DIST
+        finger_3_dist = self.sim.data.get_body_xpos("jaco_link_finger_3") - self.goal
+        finger_3_dist[0] *= 2
+        finger_3_dist[1] *= 2
+        finger_3_dist_num = np.sqrt(finger_3_dist[0]**2 + finger_3_dist[1]**2 + finger_3_dist[2]**2) / MAX_DIST
+
+        reward = 1. - ((finger_1_dist_num + finger_2_dist_num + finger_3_dist_num - 0.1) / 3.)
+        # dist[0] = np.linalg.norm(
+        #     self.sim.data.get_body_xpos("jaco_link_finger_1") - self.goal)
+        # dist[1] = np.linalg.norm(
+        #     self.sim.data.get_body_xpos("jaco_link_finger_2") - self.goal)
+        # dist[2] = np.linalg.norm(
+        #     self.sim.data.get_body_xpos("jaco_link_finger_3") - self.goal)
 
         # if continuous reward
         # reward = float(((np.mean(dist)+ 1e-6)**-1))
-        reward = 0
+        # reward = 0
 
-        if any(d < self.rewarding_distance for d in dist):
-            reward = 1
+        # if any(d < self.rewarding_distance for d in dist):
+            # reward = 1
             # done = True
             # self.reset_target()
+
+
 
         # Transform discrete actions to continuous controls
         for i in range(self.num_actuators):
